@@ -1,10 +1,14 @@
+import { useEffect, useState } from 'react';
+import { useWordChecker } from 'react-word-checker';
+
 import { sanitizeString } from './lib/utils/Formatting';
 import { GameStates, type GameState } from './lib/utils/Gaming';
 import { WordleRow } from './components/WordleRow';
 import { WordleKeyboard, WordleLetterStates, type WordleResultset } from './components/WordleKeyboard';
-import './WordleApp.css'
-import { useEffect, useState } from 'react';
 import { getKeyBoardConfig, KeyboardLayouts } from './lib/utils/KeyboardLayouts';
+
+import './WordleApp.css'
+import { useRandomWord } from './hooks/useRandomWord';
 
 interface GameProps {
 
@@ -25,9 +29,11 @@ type AttemptResult = {
 
 export const WordleApp = (props: GameProps) => {
 
-   
+
     // Word settings
-    const expectedWord = sanitizeString("horse", { capitalize: true });
+    const { wordExists } = useWordChecker('en');
+    const { isLoading, word, getRandomWord } = useRandomWord();
+    const expectedWord = sanitizeString(word, { capitalize: true });
     const wordLength = expectedWord.length;
 
     // Keyboard settings
@@ -38,6 +44,7 @@ export const WordleApp = (props: GameProps) => {
     const [currentRow, setCurrentRow] = useState(0); 
     const [currentCell, setCurrentCell] = useState(0); 
     const [currentInput, setCurrentInput] = useState(''); 
+    const [inputError, setInputError] = useState(''); 
     const [status, setStatus] = useState<GameState>(GameStates.NotStarted); 
     const [attempts, setAttempts] = useState<AttemptResult[]>(Array.from({ length: props.maxAttempts }, () => (defaultResultSet)));
     const [keys, setKeys] = useState(keyboardConfig.keys);
@@ -45,6 +52,7 @@ export const WordleApp = (props: GameProps) => {
 
 
     // TODO: fix bug when mixing keyboard button + enter via keypress
+    // TODO: fix same letter multiple times
 
     useEffect(() => {
 
@@ -70,10 +78,27 @@ export const WordleApp = (props: GameProps) => {
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [currentRow, currentCell, currentInput]); // Empty dependency array ensures this runs only once after the initial render
+    }, [isLoading, currentRow, currentCell, currentInput]); // Empty dependency array ensures this runs only once after the initial render
 
+    const getNewWord = () => {
+        getRandomWord();
+
+        // reset everything
+        setCurrentInput('');
+        setInputError('');
+        setCurrentCell(0);
+        setCurrentRow(0);
+        setStatus(GameStates.NotStarted); 
+        setAttempts(Array.from({ length: props.maxAttempts }, () => (defaultResultSet)));
+        setKeys(keyboardConfig.keys);
+        setValidate(false);
+    };
       
     const handleKeyInput = (input: any) => {
+
+        // Still waiting for the word...
+        if (isLoading)
+            return;
         
         // Reset validate 
         if (validate) {
@@ -136,6 +161,17 @@ export const WordleApp = (props: GameProps) => {
 
         const attemptedWord = sanitizeString(currentInput, { capitalize: true })
         const attemptedWordAr = attemptedWord.split("");
+
+        // check if word exists
+        if ( !wordExists(attemptedWord) ) {
+            setInputError("This doesn't look like a word. Try again...");
+            setCurrentInput('');
+            setCurrentCell(0);
+            return;
+        }
+
+        // Reset error
+        setInputError('');
         
 
         let keysUpdated = keys;
@@ -269,6 +305,12 @@ export const WordleApp = (props: GameProps) => {
     return (
         <>
             <h1>Wordle</h1>
+            {isLoading && (
+                <p>We're looking for a new word... please be patient.</p>
+            )}
+            {inputError && (
+                <p className='error'>{inputError}</p>
+            )}
             <section className={'grid'}>
                 {Array.from({ length: props.maxAttempts }).map((_, index) => (
                     <WordleRow key={index} row={index+1} 
@@ -290,6 +332,9 @@ export const WordleApp = (props: GameProps) => {
             )}
             {(status === GameStates.Winner) && (
                 <p>Congratulations! You found it.</p>
+            )}
+            {(status === GameStates.Winner || status === GameStates.Loser) && (
+                <button type='button' onClick={getNewWord}>Replay</button>
             )}
         </>
     );

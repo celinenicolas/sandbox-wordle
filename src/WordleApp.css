@@ -87,3 +87,11 @@
 .misplaced {
   background-color: #c9b458;
 }
+
+.error {
+  background-color: rgb(142, 25, 49);
+  display: inline-block;
+  padding: 2px 12px;
+  border-radius: 16px;
+  margin: 0;
+}
