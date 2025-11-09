@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ],
+  "ts-node": {
+        // Do not forget to `npm i -D tsconfig-paths`
+        "require": ["tsconfig-paths/register"]
+    },
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["*"]
+    }
+  }
+}
